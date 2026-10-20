@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cricket Tracker</title>
+<style>
+  :root{
+    --bg:#f4f6f1; --card:#fff; --ink:#1b2a1f; --muted:#667568; --line:#dfe5da;
+    --accent:#1f6b3a; --accent-ink:#fff; --warn:#b3261e; --chip:#e9f1e4;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#101612; --card:#18211b; --ink:#e8efe6; --muted:#93a396; --line:#2a372d;
+      --accent:#4cb872; --accent-ink:#08210f; --warn:#ff8a80; --chip:#213026; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--accent);color:var(--accent-ink)}
+  header h1{font-size:18px;margin:0}
+  header button{background:transparent;border:1px solid currentColor;color:inherit;border-radius:8px;padding:6px 10px;cursor:pointer}
+  nav{display:flex;gap:6px;padding:10px 16px;max-width:980px;margin:0 auto}
+  nav button{flex:1;padding:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;font-weight:600;cursor:pointer}
+  nav button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  main{max-width:980px;margin:0 auto;padding:0 16px 40px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  h2{font-size:16px;margin:0 0 12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+  .stat{background:var(--chip);border-radius:10px;padding:10px}
+  .stat b{display:block;font-size:22px}
+  .stat span{color:var(--muted);font-size:12px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+  input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+  .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px}
+  .btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;font-size:16px}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .btn.danger{background:transparent;color:var(--warn);border:1px solid var(--warn)}
+  .check{display:flex;gap:8px;align-items:center;font-weight:600;margin:8px 0;color:var(--ink);font-size:15px}
+  .check input{width:auto}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  .scroll{overflow-x:auto}
+  .err{color:var(--warn);margin:8px 0}
+  .muted{color:var(--muted)}
+  .login{max-width:340px;margin:12vh auto;padding:0 16px}
+  .hidden{display:none}
+  .match{border-top:1px solid var(--line);padding:12px 0}
+  .match:first-child{border-top:0}
+  .match .top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .pill{display:inline-block;background:var(--chip);border-radius:99px;padding:2px 10px;font-size:12px;margin:4px 4px 0 0}
+  .actions{display:flex;gap:8px;margin-top:8px}
+  .actions button{padding:6px 10px;font-size:13px}
+</style>
+</head>
+<body>
+
+<div id="loginView" class="login hidden">
+  <div class="card">
+    <h2>🏏 Cricket Tracker</h2>
+    <form id="loginForm">
+      <label for="pw">Password</label>
+      <input id="pw" type="password" autocomplete="current-password" required>
+      <div id="loginErr" class="err"></div>
+      <button class="btn" style="width:100%">Log in</button>
+    </form>
+  </div>
+</div>
+
+<div id="appView" class="hidden">
+  <header><h1>🏏 Cricket Tracker</h1><button id="logout">Log out</button></header>
+  <nav>
+    <button data-tab="stats" class="on">Stats</button>
+    <button data-tab="add">Add match</button>
+    <button data-tab="history">Matches</button>
+  </nav>
+  <main>
+    <section id="tab-stats"></section>
+
+    <section id="tab-add" class="hidden">
+      <form id="matchForm" class="card">
+        <h2 id="formTitle">Add a match</h2>
+        <input type="hidden" id="f_id">
+        <div class="row">
+          <div><label>Date</label><input type="date" id="f_date" required></div>
+          <div><label>Venue</label><input id="f_venue" list="venues"></div>
+          <div><label>Team I played for</label><input id="f_team" list="teams"></div>
+          <div><label>Opposition</label><input id="f_opp" list="opps" required></div>
+        </div>
+        <datalist id="venues"></datalist><datalist id="teams"></datalist><datalist id="opps"></datalist>
+
+        <div class="row">
+          <div><label>Match result</label>
+            <select id="f_result">
+              <option value="">—</option><option>Won</option><option>Lost</option>
+              <option>Draw</option><option>Tie</option><option>No result</option>
+            </select>
+          </div>
+          <div><label>Notes (optional)</label><input id="f_notes"></div>
+        </div>
+
+        <label class="check"><input type="checkbox" id="f_didBat" checked> I batted</label>
+        <div id="batBox" class="row">
+          <div><label>Batting position</label>
+            <select id="b_pos"></select></div>
+          <div><label>Runs scored</label><input type="number" min="0" id="b_runs" value="0"></div>
+          <div><label>Balls faced</label><input type="number" min="0" id="b_balls" value="0"></div>
+          <div><label>4s</label><input type="number" min="0" id="b_4" value="0"></div>
+          <div><label>6s</label><input type="number" min="0" id="b_6" value="0"></div>
+          <div><label>How I went out</label>
+            <select id="b_out">
+              <option>Bowled</option><option>Caught</option><option>LBW</option>
+              <option>Run out</option><option>Stumped</option><option>Hit wicket</option>
+              <option>Retired</option><option selected>Not out</option>
+            </select></div>
+        </div>
+
+        <label class="check"><input type="checkbox" id="f_didBowl"> I bowled</label>
+        <div id="bowlBox" class="hidden">
+          <div class="row">
+            <div><label>Overs bowled (e.g. 4 or 3.2)</label><input id="w_overs" inputmode="decimal" value="0"></div>
+            <div><label>Runs conceded</label><input type="number" min="0" id="w_runs" value="0"></div>
+            <div><label>Wides</label><input type="number" min="0" id="w_wides" value="0"></div>
+            <div><label>No balls</label><input type="number" min="0" id="w_nb" value="0"></div>
+          </div>
+          <label>Wickets taken, by how</label>
+          <div class="row">
+            <div><label>Bowled</label><input type="number" min="0" id="w_Bowled" value="0"></div>
+            <div><label>Caught</label><input type="number" min="0" id="w_Caught" value="0"></div>
+            <div><label>LBW</label><input type="number" min="0" id="w_LBW" value="0"></div>
+            <div><label>Stumped</label><input type="number" min="0" id="w_Stumped" value="0"></div>
+            <div><label>Hit wicket</label><input type="number" min="0" id="w_Hit wicket" value="0"></div>
+            <div><label>Other</label><input type="number" min="0" id="w_Other" value="0"></div>
+          </div>
+        </div>
+
+        <div id="formErr" class="err"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn" id="saveBtn">Save match</button>
+          <button type="button" class="btn ghost hidden" id="cancelEdit">Cancel edit</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="tab-history" class="hidden"></section>
+  </main>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const WK = ["Bowled","Caught","LBW","Stumped","Hit wicket","Other"];
+let matches = [];
+
+/* ---------- API ---------- */
+const token = () => { try { return localStorage.getItem("ct_token"); } catch { return null; } };
+async function api(path, opts = {}) {
+  const res = await fetch("/api/" + path, {
+    ...opts,
+    headers: { "content-type": "application/json", authorization: "Bearer " + (token() || "") },
+  });
+  if (res.status === 401 && path !== "login") { showLogin(); throw new Error("Please log in again"); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+/* ---------- Login ---------- */
+function showLogin() { $("#appView").classList.add("hidden"); $("#loginView").classList.remove("hidden"); }
+async function showApp() {
+  $("#loginView").classList.add("hidden"); $("#appView").classList.remove("hidden");
+  await refresh();
+}
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("#loginErr").textContent = "";
+  try {
+    const { token: t } = await api("login", { method: "POST", body: JSON.stringify({ password: $("#pw").value }) });
+    try { localStorage.setItem("ct_token", t); } catch {}
+    $("#pw").value = ""; showApp();
+  } catch (err) { $("#loginErr").textContent = err.message; }
+});
+$("#logout").addEventListener("click", () => { try { localStorage.removeItem("ct_token"); } catch {} showLogin(); });
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => tab(b.dataset.tab)));
+function tab(name) {
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+  for (const t of ["stats","add","history"]) $("#tab-" + t).classList.toggle("hidden", t !== name);
+  if (name === "add" && !$("#f_id").value) resetForm();
+}
+
+/* ---------- Data ---------- */
+async function refresh() {
+  try { matches = (await api("matches")).sort((a, b) => b.date.localeCompare(a.date)); }
+  catch (e) { return; }
+  renderStats(); renderHistory(); fillLists();
+}
+function fillLists() {
+  const uniq = (k) => [...new Set(matches.map((m) => m[k]).filter(Boolean))];
+  $("#venues").innerHTML = uniq("venue").map((v) => `<option value="${esc(v)}">`).join("");
+  $("#teams").innerHTML = uniq("team").map((v) => `<option value="${esc(v)}">`).join("");
+  $("#opps").innerHTML = uniq("opposition").map((v) => `<option value="${esc(v)}">`).join("");
+}
+
+/* ---------- Stats ---------- */
+const oversToBalls = (o) => { const [w, b = "0"] = String(o || "0").split("."); return (parseInt(w) || 0) * 6 + Math.min(parseInt(b) || 0, 5); };
+const ballsToOvers = (n) => `${Math.floor(n / 6)}${n % 6 ? "." + (n % 6) : ""}`;
+const wkTotal = (w) => WK.reduce((s, k) => s + (w.wicketTypes?.[k] || 0), 0);
+const fix = (n, d = 2) => (Number.isFinite(n) ? n.toFixed(d) : "–");
+const stat = (v, l) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+
+function renderStats() {
+  const bats = matches.filter((m) => m.batting);
+  const innings = bats.filter((m) => m.batting.howOut !== "Did not bat");
+  const runs = innings.reduce((s, m) => s + m.batting.runs, 0);
+  const balls = innings.reduce((s, m) => s + m.batting.balls, 0);
+  const notOuts = innings.filter((m) => ["Not out", "Retired"].includes(m.batting.howOut)).length;
+  const dismissals = innings.length - notOuts;
+  const hs = innings.reduce((b, m) => (!b || m.batting.runs > b.batting.runs ? m : b), null);
+  const fours = innings.reduce((s, m) => s + m.batting.fours, 0);
+  const sixes = innings.reduce((s, m) => s + m.batting.sixes, 0);
+  const fifties = innings.filter((m) => m.batting.runs >= 50 && m.batting.runs < 100).length;
+  const hundreds = innings.filter((m) => m.batting.runs >= 100).length;
+  const ducks = innings.filter((m) => m.batting.runs === 0 && !["Not out","Retired"].includes(m.batting.howOut)).length;
+
+  const bowls = matches.filter((m) => m.bowling);
+  const bBalls = bowls.reduce((s, m) => s + oversToBalls(m.bowling.overs), 0);
+  const bRuns = bowls.reduce((s, m) => s + m.bowling.runs, 0);
+  const wk = bowls.reduce((s, m) => s + wkTotal(m.bowling), 0);
+  const wides = bowls.reduce((s, m) => s + m.bowling.wides, 0);
+  const nbs = bowls.reduce((s, m) => s + m.bowling.noBalls, 0);
+  const best = bowls.reduce((b, m) => {
+    const w = wkTotal(m.bowling);
+    return !b || w > b.w || (w === b.w && m.bowling.runs < b.r) ? { w, r: m.bowling.runs } : b;
+  }, null);
+  const byType = Object.fromEntries(WK.map((k) => [k, bowls.reduce((s, m) => s + (m.bowling.wicketTypes?.[k] || 0), 0)]));
+
+  const won = matches.filter((m) => m.result === "Won").length;
+  const lost = matches.filter((m) => m.result === "Lost").length;
+
+  if (!matches.length) { $("#tab-stats").innerHTML = `<div class="card"><h2>No matches yet</h2><p class="muted">Tap “Add match” to log your first game.</p></div>`; return; }
+
+  $("#tab-stats").innerHTML = `
+    <div class="card"><h2>Overview</h2><div class="grid">
+      ${stat(matches.length, "Matches")}${stat(won, "Won")}${stat(lost, "Lost")}
+      ${stat(matches.length ? Math.round((won / matches.length) * 100) + "%" : "–", "Win rate")}
+    </div></div>
+    <div class="card"><h2>Batting</h2><div class="grid">
+      ${stat(innings.length, "Innings")}${stat(runs, "Runs")}
+      ${stat(hs ? hs.batting.runs + (["Not out","Retired"].includes(hs.batting.howOut) ? "*" : "") : "–", "Highest score")}
+      ${stat(dismissals ? fix(runs / dismissals) : "–", "Average")}
+      ${stat(balls ? fix((runs / balls) * 100) : "–", "Strike rate")}
+      ${stat(notOuts, "Not outs")}${stat(fours, "Fours")}${stat(sixes, "Sixes")}
+      ${stat(fifties, "50s")}${stat(hundreds, "100s")}${stat(ducks, "Ducks")}
+    </div></div>
+    <div class="card"><h2>Bowling</h2><div class="grid">
+      ${stat(bowls.length, "Innings")}${stat(ballsToOvers(bBalls), "Overs")}${stat(bRuns, "Runs conceded")}
+      ${stat(wk, "Wickets")}${stat(wk ? fix(bRuns / wk) : "–", "Average")}
+      ${stat(bBalls ? fix(bRuns / (bBalls / 6)) : "–", "Economy")}
+      ${stat(best ? best.w + "/" + best.r : "–", "Best figures")}
+      ${stat(wides, "Wides")}${stat(nbs, "No balls")}
+    </div>
+    <p class="muted" style="margin:12px 0 0">Wickets by type: ${WK.map((k) => `${k} ${byType[k]}`).join(" · ")}</p></div>`;
+}
+
+/* ---------- History ---------- */
+function renderHistory() {
+  if (!matches.length) { $("#tab-history").innerHTML = `<div class="card"><p class="muted">No matches yet.</p></div>`; return; }
+  $("#tab-history").innerHTML = `<div class="card">` + matches.map((m) => {
+    const b = m.batting, w = m.bowling;
+    const batTxt = b ? (b.howOut === "Did not bat" ? "Did not bat" : `Batted ${b.position ? "#" + b.position : ""}: ${b.runs}${["Not out","Retired"].includes(b.howOut) ? "*" : ""} (${b.balls}b, ${b.fours}x4, ${b.sixes}x6) – ${b.howOut}`) : "";
+    const bowlTxt = w ? `Bowled: ${w.overs} ov, ${w.runs} runs, ${wkTotal(w)} wkts${wkTotal(w) ? " (" + WK.filter((k) => w.wicketTypes[k]).map((k) => `${w.wicketTypes[k]} ${k}`).join(", ") + ")" : ""}, ${w.wides} wd, ${w.noBalls} nb` : "";
+    return `<div class="match">
+      <div class="top"><b>${esc(m.date)} · ${esc(m.team || "My team")} v ${esc(m.opposition)}</b><span>${esc(m.result)}</span></div>
+      <div class="muted">${esc(m.venue)}</div>
+      ${batTxt ? `<span class="pill">${esc(batTxt)}</span>` : ""}${bowlTxt ? `<span class="pill">${esc(bowlTxt)}</span>` : ""}
+      ${m.notes ? `<div class="muted">${esc(m.notes)}</div>` : ""}
+      <div class="actions"><button class="btn ghost" data-edit="${esc(m.id)}">Edit</button><button class="btn danger" data-del="${esc(m.id)}">Delete</button></div>
+    </div>`;
+  }).join("") + `</div>`;
+}
+$("#tab-history").addEventListener("click", async (e) => {
+  const ed = e.target.closest("[data-edit]"), dl = e.target.closest("[data-del]");
+  if (ed) editMatch(ed.dataset.edit);
+  if (dl && confirm("Delete this match?")) { await api("matches/" + encodeURIComponent(dl.dataset.del), { method: "DELETE" }); refresh(); }
+});
+
+/* ---------- Form ---------- */
+$("#b_pos").innerHTML = `<option value="0">—</option>` + Array.from({ length: 11 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+$("#f_didBat").addEventListener("change", (e) => $("#batBox").classList.toggle("hidden", !e.target.checked));
+$("#f_didBowl").addEventListener("change", (e) => $("#bowlBox").classList.toggle("hidden", !e.target.checked));
+
+function resetForm() {
+  $("#matchForm").reset();
+  $("#f_id").value = ""; $("#formTitle").textContent = "Add a match";
+  $("#f_date").value = new Date().toISOString().slice(0, 10);
+  $("#batBox").classList.remove("hidden"); $("#bowlBox").classList.add("hidden");
+  $("#cancelEdit").classList.add("hidden"); $("#formErr").textContent = "";
+}
+$("#cancelEdit").addEventListener("click", () => { resetForm(); tab("history"); });
+
+function editMatch(id) {
+  const m = matches.find((x) => x.id === id); if (!m) return;
+  tab("add"); resetForm();
+  $("#f_id").value = m.id; $("#formTitle").textContent = "Edit match"; $("#cancelEdit").classList.remove("hidden");
+  $("#f_date").value = m.date; $("#f_venue").value = m.venue; $("#f_team").value = m.team;
+  $("#f_opp").value = m.opposition; $("#f_result").value = m.result; $("#f_notes").value = m.notes;
+  $("#f_didBat").checked = !!m.batting; $("#batBox").classList.toggle("hidden", !m.batting);
+  if (m.batting) {
+    $("#b_pos").value = m.batting.position; $("#b_runs").value = m.batting.runs; $("#b_balls").value = m.batting.balls;
+    $("#b_4").value = m.batting.fours; $("#b_6").value = m.batting.sixes; $("#b_out").value = m.batting.howOut;
+  }
+  $("#f_didBowl").checked = !!m.bowling; $("#bowlBox").classList.toggle("hidden", !m.bowling);
+  if (m.bowling) {
+    $("#w_overs").value = m.bowling.overs; $("#w_runs").value = m.bowling.runs;
+    $("#w_wides").value = m.bowling.wides; $("#w_nb").value = m.bowling.noBalls;
+    WK.forEach((k) => ($("#w_" + k).value = m.bowling.wicketTypes?.[k] || 0));
+  }
+  window.scrollTo(0, 0);
+}
+
+$("#matchForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("#formErr").textContent = "";
+  const n = (s) => Number($(s).value) || 0;
+  const body = {
+    id: $("#f_id").value || undefined,
+    date: $("#f_date").value, venue: $("#f_venue").value, team: $("#f_team").value,
+    opposition: $("#f_opp").value, result: $("#f_result").value, notes: $("#f_notes").value,
+    batting: $("#f_didBat").checked ? { position: n("#b_pos"), runs: n("#b_runs"), balls: n("#b_balls"), fours: n("#b_4"), sixes: n("#b_6"), howOut: $("#b_out").value } : null,
+    bowling: $("#f_didBowl").checked ? {
+      overs: $("#w_overs").value, runs: n("#w_runs"), wides: n("#w_wides"), noBalls: n("#w_nb"),
+      wicketTypes: Object.fromEntries(WK.map((k) => [k, n("#w_" + k)])),
+    } : null,
+  };
+  if (body.batting && body.batting.fours * 4 + body.batting.sixes * 6 > body.batting.runs) {
+    $("#formErr").textContent = "Your 4s and 6s add up to more than the runs scored."; return;
+  }
+  $("#saveBtn").disabled = true;
+  try { await api("matches", { method: "POST", body: JSON.stringify(body) }); resetForm(); await refresh(); tab("stats"); }
+  catch (err) { $("#formErr").textContent = err.message; }
+  $("#saveBtn").disabled = false;
+});
+
+/* ---------- Start ---------- */
+(token() ? showApp() : showLogin());
+</script>
+</body>
+</html>
